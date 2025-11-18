@@ -275,7 +275,7 @@ class CommandSwerveDrivetrain(Subsystem, swerve.SwerveDrivetrain):
         # If we haven't applied the operator perspective before, then we should apply it regardless of DS state.
         # This allows us to correct the perspective in case the robot code restarts mid-match.
         # Otherwise, only check and apply the operator perspective if the DS is disabled.
-        # This ensures driving behavior doesn't change until an explicit disable event occurs during testing.
+        # This ensures driving behavior doesn't change until an explicit disable event occurs during testing.nc
         if not self._has_applied_operator_perspective or DriverStation.isDisabled():
             alliance_color = DriverStation.getAlliance()
             if alliance_color is not None:
