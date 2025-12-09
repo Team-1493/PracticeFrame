@@ -8,14 +8,22 @@ import commands2
 import commands2.cmd
 from commands2.button import CommandXboxController, Trigger
 from commands2.sysid import SysIdRoutine
+from telemetry import Telemetry
+from phoenix6 import swerve
+
+from wpilib import DriverStation
+from wpilib import SmartDashboard
 
 from generated.tuner_constants import TunerConstants
-from telemetry import Telemetry
+from subsystems.LLSystem import LLSystem
+from subsystems.Drive.driveTrainGenerate import DrivetrainGenerator
+from subsystems.Drive.headingcontroller import HeadingController
 
-from phoenix6 import swerve
-from wpilib import DriverStation
-from wpimath.geometry import Rotation2d
-from wpimath.units import rotationsToRadians
+from Commands.drivecommand import DriveTeleopCommand
+from Auto import autogenerator
+from pathplannerlib.auto import PathPlannerAuto
+from pathplannerlib.auto import AutoBuilder
+
 
 
 class RobotContainer:
@@ -27,32 +35,27 @@ class RobotContainer:
     """
 
     def __init__(self) -> None:
-        self._max_speed = (
-            TunerConstants.speed_at_12_volts
-        )  # speed_at_12_volts desired top speed
-        self._max_angular_rate = rotationsToRadians(
-            0.75
-        )  # 3/4 of a rotation per second max angular velocity
-
-        # Setting up bindings for necessary control of the swerve drive platform
-        self._drive = (
-            swerve.requests.FieldCentric()
-            .with_deadband(self._max_speed * 0.1)
-            .with_rotational_deadband(
-                self._max_angular_rate * 0.1
-            )  # Add a 10% deadband
-            .with_drive_request_type(
-                swerve.SwerveModule.DriveRequestType.OPEN_LOOP_VOLTAGE
-            )  # Use open-loop control for drive motors
-        )
-        self._brake = swerve.requests.SwerveDriveBrake()
-        self._point = swerve.requests.PointWheelsAt()
-
-        self._logger = Telemetry(self._max_speed)
-
+        self.drivetrain = DrivetrainGenerator.getInstance()
+        self.headingController = HeadingController.getInstance()
+        self.limelightSytem = LLSystem()
         self._joystick = CommandXboxController(0)
 
-        self.drivetrain = TunerConstants.create_drivetrain()
+        self.autoGenerator = autogenerator.AutoGenerator()
+        self.autoChooser = AutoBuilder.buildAutoChooser()
+        SmartDashboard.putData("Auto Chooser", self.autoChooser)
+        
+        self._logger = Telemetry(TunerConstants.speed_at_12_volts)
+
+        
+        # speed_at_12_volts desired top speed
+        self._max_speed = (TunerConstants.speed_at_12_volts)  
+        
+        self.driveTeleopCommand = DriveTeleopCommand(self.drivetrain,
+                lambda: -self._joystick.getRawAxis(1),
+                lambda: -self._joystick.getRawAxis(0),
+                lambda: -self._joystick.getRawAxis(4))
+    
+
 
         # Configure the button bindings
         self.configureButtonBindings()
@@ -64,24 +67,10 @@ class RobotContainer:
         and then passing it to a JoystickButton.
         """
 
-        # Note that X is defined as forward according to WPILib convention,
-        # and Y is defined as to the left according to WPILib convention.
-        self.drivetrain.setDefaultCommand(
-            # Drivetrain will execute this command periodically
-            self.drivetrain.apply_request(
-                lambda: (
-                    self._drive.with_velocity_x(
-                        -self._joystick.getLeftY() * self._max_speed
-                    )  # Drive forward with negative Y (forward)
-                    .with_velocity_y(
-                        -self._joystick.getLeftX() * self._max_speed
-                    )  # Drive left with negative X (left)
-                    .with_rotational_rate(
-                        -self._joystick.getRightX() * self._max_angular_rate
-                    )  # Drive counterclockwise with negative X (left)
-                )
-            )
-        )
+
+        self.drivetrain.setDefaultCommand(self.driveTeleopCommand)
+
+       
 
         # Idle while the robot is disabled. This ensures the configured
         # neutral mode is applied to the drive motors while disabled.
@@ -90,14 +79,7 @@ class RobotContainer:
             self.drivetrain.apply_request(lambda: idle).ignoringDisable(True)
         )
 
-        self._joystick.a().whileTrue(self.drivetrain.apply_request(lambda: self._brake))
-        self._joystick.b().whileTrue(
-            self.drivetrain.apply_request(
-                lambda: self._point.with_module_direction(
-                    Rotation2d(-self._joystick.getLeftY(), -self._joystick.getLeftX())
-                )
-            )
-        )
+        """""
 
         # Run SysId routines when holding back/start and X/Y.
         # Note that each routine should be run exactly once in a single log.
@@ -113,19 +95,34 @@ class RobotContainer:
         (self._joystick.start() & self._joystick.x()).whileTrue(
             self.drivetrain.sys_id_quasistatic(SysIdRoutine.Direction.kReverse)
         )
-
+        """
         # reset the field-centric heading on left bumper press
         self._joystick.leftBumper().onTrue(
             self.drivetrain.runOnce(lambda: self.drivetrain.seed_field_centric())
         )
 
+
+        self._joystick.button(1).onTrue(
+            self.headingController.runOnce(lambda:self.headingController.rotateToZero()))
+
+        self._joystick.button(2).onTrue(
+            self.headingController.runOnce(lambda:self.headingController.rotateTo90()))
+
+        self._joystick.button(3).onTrue(
+            self.headingController.runOnce(lambda:self.headingController.rotateTo180()))
+
+        self._joystick.button(4).onTrue(
+            self.headingController.runOnce(lambda:self.headingController.rotateTo270()))
+
+
         self.drivetrain.register_telemetry(
             lambda state: self._logger.telemeterize(state)
         )
 
-    def getAutonomousCommand(self) -> commands2.Command:
-        """Use this to pass the autonomous command to the main {@link Robot} class.
+    
 
-        :returns: the command to run in autonomous
-        """
-        return commands2.cmd.print_("No autonomous command configured")
+
+    
+
+    def getAutonomousCommand(self):
+        return self.autoChooser.getSelected()

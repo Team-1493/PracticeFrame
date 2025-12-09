@@ -1,100 +1,207 @@
-
-import wpimath
-from wpimath import units
-from LLH import LimelightHelpers
+from typing import List
+from commands2 import Command, Subsystem
+from phoenix6 import utils
+from Utilities.LLH import LimelightHelpers
+from Utilities.LLH import PoseEstimate
+from Utilities.LLH import RawFiducial
 from phoenix6 import utils
 from wpilib import DriverStation
-from wpilib import RobotState
-import command_swerve_drivetrain
+from robotstate import RobotState
+from Constants import ConstantValues
+from wpilib import SmartDashboard
 
-class LLSystem():
+from subsystems.Drive.driveTrainGenerate import DrivetrainGenerator
+
+class LLSystem(Subsystem):
     def __init__(self):
+        self.robotState = RobotState.getInstance()
+        self.driveTrain = DrivetrainGenerator.getInstance()
+        self.Lconstants = ConstantValues.LeftLimelightConstants
+        self.Rconstants = ConstantValues.RightLimelightConstants 
+
+        self.max_value = 9999
+
         self.xyStdDevCoefficient = 0.02
-        self.thetaStdDevCoefficient = 9999  #0.04
-        self.robotState = RobotState()
-        self.driveTrain = command_swerve_drivetrain()
+        self.thetaStdDevCoefficient = self.max_value  #0.04
 
-"""
+        self.previousLeftEstimate = PoseEstimate()
+        self.previousRightEstimate = PoseEstimate()
 
-import static edu.wpi.first.units.Units.Meters;
-import com.team2052.lib.helpers.MathHelpers;
-import com.team2052.lib.vision.limelight.LimelightHelpers.PoseEstimate;
-import edu.wpi.first.math.VecBuilder;
+        self.PE = PoseEstimate()
 
-import frc.robot.Constants.VisionConstants.LeftLimelightConstants;
-import frc.robot.Constants.VisionConstants.RightLimelightConstants;
-import frc.robot.util.AlignmentCalculator.AlignOffset;
-import frc.robot.util.FieldConstants;
-import java.util.Arrays;
-import java.util.Optional;
-import org.littletonrobotics.junction.Logger;
+        self.configfureLimelights()
 
-public class VisionIOLimelight implements VisionIO {
-    **private static final double xyStdDevCoefficient = 0.02;
-    **private static final double thetaStdDevCoefficient = Double.MAX_VALUE; // 0.04;
-    **private final RobotState robotState = RobotState.getInstance();
-    private final DrivetrainSubsystem drivetrain = DrivetrainSubsystem.getInstance();
 
-    private PoseEstimate previousLeftEstimate;
-    private PoseEstimate previousRightEstimate;
+    def configfureLimelights(self):
 
-    public VisionIOLimelight() {
-        configureLimelights();
-    }
+        LimelightHelpers.set_camerapose_robotspace(
+                self.Lconstants.CAMERA_NAME,
+                self.Lconstants.X_OFFSET, 
+                self.Lconstants.Y_OFFSET,
+                self.Lconstants.Z_OFFSET,
+                self.Lconstants.THETA_X_OFFSET,
+                self.Lconstants.THETA_Y_OFFSET,
+                self.Lconstants.THETA_Z_OFFSET)
+        
+        LimelightHelpers.set_camerapose_robotspace(
+                self.Rconstants.CAMERA_NAME,
+                self.Rconstants.X_OFFSET, 
+                self.Rconstants.Y_OFFSET,
+                self.Rconstants.Z_OFFSET,
+                self.Rconstants.THETA_X_OFFSET,
+                self.Rconstants.THETA_Y_OFFSET,
+                self.Rconstants.THETA_Z_OFFSET)   
 
-    private void configureLimelights() {
-        LimelightHelpers.setCameraPose_RobotSpace(
-                LeftLimelightConstants.CAMERA_NAME,
-                LeftLimelightConstants.X_OFFSET.in(Meters),
-                LeftLimelightConstants.Y_OFFSET.in(Meters),
-                LeftLimelightConstants.Z_OFFSET.in(Meters),
-                LeftLimelightConstants.THETA_X_OFFSET.in(Degrees),
-                LeftLimelightConstants.THETA_Y_OFFSET.in(Degrees),
-                LeftLimelightConstants.THETA_Z_OFFSET.in(Degrees));
-        LimelightHelpers.setCameraPose_RobotSpace(
-                RightLimelightConstants.CAMERA_NAME,
-                RightLimelightConstants.X_OFFSET.in(Meters),
-                RightLimelightConstants.Y_OFFSET.in(Meters),
-                RightLimelightConstants.Z_OFFSET.in(Meters),
-                RightLimelightConstants.THETA_X_OFFSET.in(Degrees),
-                RightLimelightConstants.THETA_Y_OFFSET.in(Degrees),
-                RightLimelightConstants.THETA_Z_OFFSET.in(Degrees));
+        LimelightHelpers.set_imu_mode(self.Lconstants.CAMERA_NAME, 0)
+        LimelightHelpers.set_imu_mode(self.Rconstants.CAMERA_NAME, 0)    
+    
 
-        LimelightHelpers.SetIMUMode(LeftLimelightConstants.CAMERA_NAME, 0);
-        LimelightHelpers.SetIMUMode(RightLimelightConstants.CAMERA_NAME, 0);
-    }
+    
+    def update(self): 
 
-    public void update() {
-        boolean shouldAccept = MathHelpers.chassisSpeedsNorm(robotState.getChassisSpeeds()) < 3.0
-                && Math.abs(robotState.getRotationalSpeeds()) < Math.PI
-                && (!DriverStation.isAutonomous()
-                        || (robotState
-                                        .getFieldToRobot()
-                                        .getTranslation()
-                                        .getDistance(
-                                                robotState.isRedAlliance()
-                                                        ? FieldConstants.RED_REEF_CENTER
-                                                        : FieldConstants.BLUE_REEF_CENTER)
-                                < 3));
+        """ check if we are moving too fast for an accurate camera measurement """
+        shouldAccept = (self.robotState.getChassisSpeedsNorm()<3 
+                        and abs(self.robotState.getRotationalSpeedsRPS())<2)
+        SmartDashboard.putBoolean("Accept Target",shouldAccept)
 
-        Optional<PoseEstimate> leftEstimate;
-        Optional<PoseEstimate> rightEstimate;
+        """ set the standard deviations for use in the pose estimator """
+        leftStdDev = self.max_value
+        leftHeadingStdDev = self.max_value
+        rightStdDev = self.max_value
+        rightHeadingStdDev = self.max_value
 
-        double leftStdDev = Double.MAX_VALUE;
-        double leftHeadingStdDev = Double.MAX_VALUE;
-        double rightStdDev = Double.MAX_VALUE;
-        double rightHeadingStdDev = Double.MAX_VALUE;
+        leftEstimate=PoseEstimate()
 
-        if (RobotState.getInstance().getAlignOffset() == AlignOffset.LEFT_BRANCH) {
-            leftEstimate = pollLL(LeftLimelightConstants.CAMERA_NAME, previousLeftEstimate);
-            rightEstimate = Optional.empty();
-        } else if (RobotState.getInstance().getAlignOffset() == AlignOffset.RIGHT_BRANCH) {
-            leftEstimate = Optional.empty();
-            rightEstimate = pollLL(RightLimelightConstants.CAMERA_NAME, previousRightEstimate);
-        } else {
-            leftEstimate = pollLL(LeftLimelightConstants.CAMERA_NAME, previousLeftEstimate);
-            rightEstimate = pollLL(RightLimelightConstants.CAMERA_NAME, previousRightEstimate);
-        }
+        leftEstimate = self.pollLL(self.Lconstants.CAMERA_NAME, self.previousLeftEstimate)
+        rightEstimate = self.pollLL(self.Rconstants.CAMERA_NAME, self.previousRightEstimate)
+      
+        if shouldAccept:
+
+            if (leftEstimate is not None and len(leftEstimate.raw_fiducials) > 0):
+                closestID,closestTagDist = self.minDist(leftEstimate.raw_fiducials)
+                leftStdDev = self.xyStdDevCoefficient * (closestTagDist ** 2) / leftEstimate.tag_count
+                self.leftHeadingStdDev = self.thetaStdDevCoefficient * (closestTagDist ** 2) / leftEstimate.tag_count
+                
+                if leftEstimate.avg_tag_dist > 3.5:
+                    leftStdDev =self.max_value
+
+                SmartDashboard.putNumber("LL-L closest ID",closestID)    
+                SmartDashboard.putNumber("LL-L closest Dist",closestTagDist)    
+            else:
+                SmartDashboard.putNumber("LL-L closest ID",-1)    
+                SmartDashboard.putNumber("LL-L closest Dist",-1)    
+
+
+            if (rightEstimate is not None and len(rightEstimate.raw_fiducials) > 0):
+                closestID,closestTagDist = self.minDist(rightEstimate.raw_fiducials)
+                rightStdDev = self.xyStdDevCoefficient * (closestTagDist ** 2) / rightEstimate.tag_count
+                self.rightHeadingStdDev = self.thetaStdDevCoefficient * (closestTagDist ** 2) / rightEstimate.tag_count
+                
+                if rightEstimate.avg_tag_dist > 3.5:
+                    rightStdDev =self.max_value
+                
+                SmartDashboard.putNumber("LL-R closest ID",closestID)    
+                SmartDashboard.putNumber("LL-R closest Dist",closestTagDist)    
+
+            else:
+                SmartDashboard.putNumber("LL-R closest ID",-1)    
+                SmartDashboard.putNumber("LL-R closest Dist",-1)    
+
+
+
+            if leftStdDev < rightStdDev:
+                self.driveTrain.add_vision_measurement(
+                        leftEstimate.pose,
+                        utils.fpga_to_current_time(leftEstimate.timestamp_seconds),
+                        (leftStdDev, leftStdDev, leftHeadingStdDev))
+                
+            elif rightStdDev < leftStdDev:
+                self.driveTrain.add_vision_measurement(
+                        rightEstimate.pose,
+                        utils.fpga_to_current_time(rightEstimate.timestamp_seconds),
+                        (rightStdDev, rightStdDev, rightHeadingStdDev))
+                
+        else:
+            SmartDashboard.putNumber("LL-L closest ID",-1)    
+            SmartDashboard.putNumber("LL-L closest Dist",-1)    
+            SmartDashboard.putNumber("LL-R closest ID",-1)    
+            SmartDashboard.putNumber("LL-R closest Dist",-1)    
+
+
+
+
+
+    def minDist(self,rf:List[RawFiducial]):
+        minD=9999
+        minID=0
+        iMax=len(rf)
+        i=0
+        while i<iMax:
+            if rf[i].dist_to_camera<minD:
+                minID=i
+                minD=rf[i].dist_to_camera
+                i=i+1
+        return rf[minID].id,minD
+
+
+
+
+    def pollLL(self,id,previousEstimate):
+        LimelightHelpers.set_robot_orientation(
+                id, self.robotState.getRotationDeg(), 0, 0, 0, 0, 0)
+
+        if (LimelightHelpers.get_tv(id)):
+            if previousEstimate is not None:
+                oldTimestamp =  previousEstimate.timestampSeconds 
+            else:
+                oldTimestamp = self.max_value
+                
+            newEstimate = LimelightHelpers.get_botpose_estimate_wpiblue_megatag2(id)
+            
+            if newEstimate is not None:
+                
+                if newEstimate.timestampSeconds == oldTimestamp:
+                    newEstimate = None
+                else:
+                    previousEstimate = newEstimate
+        else:
+            newEstimate = None 
+
+        return newEstimate
+                
+
+
+    def pollLLMT1(self,id,previousEstimate):
+
+        if (LimelightHelpers.getTV(id)):
+            if previousEstimate is not None:
+                oldTimestamp =  previousEstimate.timestampSeconds 
+            else:
+                oldTimestamp = self.max_value
+                
+            newEstimate = LimelightHelpers.get_botpose_estimate_wpiblue(id)
+            
+            if newEstimate is not None:
+                
+                if newEstimate.timestampSeconds == oldTimestamp:
+                    newEstimate = None
+                else:
+                    previousEstimate = newEstimate
+        else:
+            newEstimate = None 
+                       
+        return newEstimate            
+        
+
+        
+    def periodic(self):
+        self.update()
+                        
+
+"""""
+
+    
+
 
         if (shouldAccept) {
             if (leftEstimate.isPresent() && leftEstimate.get().rawFiducials.length > 0) {

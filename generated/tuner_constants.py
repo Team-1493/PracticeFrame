@@ -1,5 +1,5 @@
 from phoenix6 import CANBus, configs, hardware, signals, swerve, units
-from subsystems.command_swerve_drivetrain import CommandSwerveDrivetrain
+from subsystems.Drive.command_swerve_drivetrain import CommandSwerveDrivetrain
 from wpimath.units import inchesToMeters
 
 
@@ -27,7 +27,7 @@ class TunerConstants:
     # output type specified by SwerveModuleConstants.DriveMotorClosedLoopOutput
     _drive_gains = (
         configs.Slot0Configs()
-        .with_k_p(0.1)
+        .with_k_p(.1)
         .with_k_i(0)
         .with_k_d(0)
         .with_k_s(0)

@@ -8,7 +8,7 @@
 import wpilib
 import commands2
 import typing
-
+from robotstate import RobotState
 from robotcontainer import RobotContainer
 
 
@@ -29,6 +29,7 @@ class MyRobot(commands2.TimedCommandRobot):
         # Instantiate our RobotContainer.  This will perform all our button bindings, and put our
         # autonomous chooser on the dashboard.
         self.container = RobotContainer()
+        self.robotState = RobotState.getInstance()
 
     def robotPeriodic(self) -> None:
         """This function is called every 20 ms, no matter the mode. Use this for items like diagnostics
@@ -36,6 +37,8 @@ class MyRobot(commands2.TimedCommandRobot):
 
         This runs after the mode specific periodic functions, but before LiveWindow and
         SmartDashboard integrated updating."""
+
+        self.robotState.update()
 
         # Runs the Scheduler.  This is responsible for polling buttons, adding newly-scheduled
         # commands, running already-scheduled commands, removing finished or interrupted commands,
@@ -53,6 +56,8 @@ class MyRobot(commands2.TimedCommandRobot):
 
     def autonomousInit(self) -> None:
         """This autonomous runs the autonomous command selected by your RobotContainer class."""
+
+        
         self.autonomousCommand = self.container.getAutonomousCommand()
 
         if self.autonomousCommand:
