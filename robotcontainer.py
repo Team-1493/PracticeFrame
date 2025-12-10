@@ -7,6 +7,8 @@
 import commands2
 import commands2.cmd
 from commands2.button import CommandXboxController, Trigger
+from wpilib import Joystick
+from wpilib import XboxController
 from commands2.sysid import SysIdRoutine
 from telemetry import Telemetry
 from phoenix6 import swerve
@@ -96,19 +98,26 @@ class RobotContainer:
             self.drivetrain.sys_id_quasistatic(SysIdRoutine.Direction.kReverse)
         )
         """
-        # reset the field-centric heading on left bumper press
+#         reset the field-centric heading on left bumper press
         self._joystick.leftBumper().onTrue(
             self.drivetrain.runOnce(lambda: self.drivetrain.seed_field_centric())
         )
 
 
+#        commands2.button.JoystickButton(self._joystick, 2).onTrue(self.headingController.rotateTo90Command())
+
+        
+#        commands2.button.JoystickButton(self._joystick, 1).onTrue(
+#            self.headingController.runOnce(lambda:self.headingController.rotateTo90()))
+        
+        
         self._joystick.button(1).onTrue(
             self.headingController.runOnce(lambda:self.headingController.rotateToZero()))
-
+        
         self._joystick.button(2).onTrue(
             self.headingController.runOnce(lambda:self.headingController.rotateTo90()))
 
-        self._joystick.button(3).onTrue(
+        self._joystick.button(7).onTrue(
             self.headingController.runOnce(lambda:self.headingController.rotateTo180()))
 
         self._joystick.button(4).onTrue(
@@ -121,8 +130,6 @@ class RobotContainer:
 
     
 
-
-    
 
     def getAutonomousCommand(self):
         return self.autoChooser.getSelected()
