@@ -37,8 +37,8 @@ class AutoGenerator(Subsystem):
                 self.driveRC.with_speeds(speeds)
                 ),
             PPHolonomicDriveController( # PPHolonomicController is the built in path following controller for holonomic drive trains
-                PIDConstants(5.0, 0.0, 0.0), # Translation PID constants
-                PIDConstants(5.0, 0.0, 0.0) # Rotation PID constants
+                PIDConstants(7.0, 0.0, 0.0), # Translation PID constants
+                PIDConstants(7.0, 0.0, 0.0) # Rotation PID constants
             ),
             config, # The robot configuration
             self.shouldFlipPath, # Supplier to control path flipping based on alliance color

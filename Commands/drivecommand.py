@@ -36,9 +36,6 @@ class DriveTeleopCommand(commands2.Command):
         self.requestFC = (
             swerve.requests.FieldCentric()
             .with_deadband(self._max_speed * 0.0025)  #squared input, so db starts at 0.05
-            .with_rotational_deadband(
-                self._max_angular_rate * 0.0025
-            )  # Add a 10% deadband
             .with_drive_request_type(
                 swerve.SwerveModule.DriveRequestType.VELOCITY
             )  
@@ -52,11 +49,14 @@ class DriveTeleopCommand(commands2.Command):
         forw=self.forward()
         sde=self.side()
         rot = self.rotate()
-
+        if rot<0.05 and rot>-0.05: rot=0
+        if forw<0.05 and forw>-0.05: forw=0
+        if sde<0.05 and sde>-0.05: sde=0                
         # square input
         forw = copysign(forw**2,forw)
         sde = copysign(sde**2,sde)
-        rot = copysign(rot**2,rot)        
+        rot = copysign(rot**2,rot)
+
         rot = self.headingController.calulateRotationRate(rot*self._max_angular_rate)
         if rot<-self._max_angular_rate: rot=-self._max_angular_rate
         elif  rot>self._max_angular_rate: rot=self._max_angular_rate

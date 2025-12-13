@@ -1,4 +1,5 @@
-from commands2 import Subsystem
+from commands2 import Command, InstantCommand, Subsystem
+from wpilib import SmartDashboard
 import commands2
 from wpimath.controller  import ProfiledPIDController
 from wpimath.trajectory import TrapezoidProfile
@@ -43,8 +44,7 @@ class HeadingController(Subsystem):
         speed = self.getSpeed()
         a=stick_rot
 
-        
-        if abs(stick_rot) > 0  or (abs(self.rotationRate)<self.headingRateTolerance and not self.state):
+        if abs(stick_rot) > 0 : #or (abs(self.rotationRate)<self.headingRateTolerance and not self.state):
             self.targetRotationPrev = self.targetRotation
             self.targetRotation = self.rotation
             self.state=False
@@ -52,7 +52,7 @@ class HeadingController(Subsystem):
         elif self.state or  speed>0.3 :
             if self.targetRotation != self.targetRotationPrev:
                 self.targetRotationPrev=self.targetRotation
-                self.setTargetRotation(self.targetRotation)
+                self.setTargetRotation(self.targetRotation)               
             stick_rot = self.headingController.calculate(self.rotation)
 
             if self.headingController.atSetpoint(): 
@@ -85,6 +85,7 @@ class HeadingController(Subsystem):
         self.state=True
 
     def rotateTo270(self):
+        SmartDashboard.putNumber("In Rot270",1)
         self.setTargetRotation(3*pi/2)
         self.state=True        
 
@@ -95,6 +96,13 @@ class HeadingController(Subsystem):
         return self.driveTrain.get_state().speeds.omega
     
     def getSpeed(self) -> float:
-        return hypot(self.driveTrain.get_state().speeds.vx,self.driveTrain.get_state().speeds.vy)    
+        return hypot(self.driveTrain.get_state().speeds.vx,self.driveTrain.get_state().speeds.vy) 
+
+    def setTargetRotationCommand(self,angle) -> Command:
+        return  InstantCommand(lambda: self.setTargetRotation(angle))   
+    
+    def setTargetRotationInt (self,b:bool):
+        self.setTargetRotation(self.getRotation())
+        
     
     
