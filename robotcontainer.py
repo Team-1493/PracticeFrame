@@ -21,15 +21,11 @@ from subsystems.LLSystem import LLSystem
 from subsystems.Drive.driveTrainGenerate import DrivetrainGenerator
 from subsystems.Drive.headingcontroller import HeadingController
 
-from Commands.driveTocommands import DriveToPose
-from Commands.settargetpoae import TargetePose
+from Commands.drivepath import DrivePath
 from Commands.drivecommand import DriveTeleopCommand
 from Auto import autogenerator
 from pathplannerlib.auto import PathPlannerAuto
 from pathplannerlib.auto import AutoBuilder
-
-
-
 
 class RobotContainer:
 
@@ -49,8 +45,7 @@ class RobotContainer:
         # speed_at_12_volts desired top speed
         self._max_speed = (TunerConstants.speed_at_12_volts)  
         
-        self.driveToPose = DriveToPose(
-                lambda: TargetePose.getTargetPose(), 
+        self.drivePath = DrivePath(
                 lambda: self.drivetrain.get_state().pose
         )
 
@@ -77,37 +72,12 @@ class RobotContainer:
             self.drivetrain.apply_request(lambda: idle).ignoringDisable(True)
         )
 
-        self._joystick.a().whileTrue(self.drivetrain.apply_request(lambda: self._brake))
-        self._joystick.b().whileTrue(
-            self.drivetrain.apply_request(
-                lambda: self._point.with_module_direction(
-                    Rotation2d(-self._joystick.getLeftY(), -self._joystick.getLeftX())
-                )
-            )
-        )
 
-        # Run SysId routines when holding back/start and X/Y.
-        # Note that each routine should be run exactly once in a single log.
-        """""
-        (self._joystick.back() & self._joystick.y()).whileTrue(
-            self.drivetrain.sys_id_dynamic(SysIdRoutine.Direction.kForward)
-        )
-        (self._joystick.back() & self._joystick.x()).whileTrue(
-            self.drivetrain.sys_id_dynamic(SysIdRoutine.Direction.kReverse)
-        )
-        (self._joystick.start() & self._joystick.y()).whileTrue(
-            self.drivetrain.sys_id_quasistatic(SysIdRoutine.Direction.kForward)
-        )
-        (self._joystick.start() & self._joystick.x()).whileTrue(
-            self.drivetrain.sys_id_quasistatic(SysIdRoutine.Direction.kReverse)
-        )
-        """""
         # reset the field-centric heading on left bumper press
         self._joystick.leftBumper().onTrue(
             self.drivetrain.runOnce(lambda: self.drivetrain.seed_field_centric())
         )
 
-        
         
         self._joystick.button(1).onTrue(
             self.headingController.runOnce(lambda:self.headingController.rotateToZero()))
@@ -125,14 +95,14 @@ class RobotContainer:
             lambda state: self._logger.telemeterize(state)
         )
 
-        
         self._joystick.button(7).whileTrue(
-            commands2.DeferredCommand(lambda:self.driveToPose.initializePath()).finallyDo
+            commands2.DeferredCommand(lambda:self.drivePath.drivePathToTag(17,-.5,.3)).finallyDo
             (self.headingController.setTargetRotationInt))
         
-
+        self._joystick.button(8).whileTrue(
+            commands2.DeferredCommand(lambda:self.drivePath.drivePathFindToTag(17,-.5,.3)).finallyDo
+            (self.headingController.setTargetRotationInt))        
 
 
     def getAutonomousCommand(self):
         return self.autoChooser.getSelected()
-        return None

@@ -6,24 +6,22 @@ from wpilib import DriverStation
 from wpimath.kinematics import ChassisSpeeds;
 from wpimath.geometry import Pose2d, Rotation2d, Translation2d
 from subsystems.Drive.driveTrainGenerate import DrivetrainGenerator
+from Constants import ConstantValues 
 #from wpimath.geometry import Pose2d
 from math import pi
-
 
 import math
 
 
-class DriveToPose(Subsystem):
+class DrivePath(Subsystem):
     def __init__(self,
-                _target: typing.Callable[[], Pose2d],
                 _robot: typing.Callable[[], Pose2d],
                  ) -> None:
         super().__init__()
 
         self.driveTrain = DrivetrainGenerator.getInstance()
-        self.target = _target
         self.robot = _robot
-        self.targetPose=self.target()
+        self.targetPose= Pose2d(Translation2d(3,3),Rotation2d(1.57))
         self.robotPose=self.robot()
         self.running=False
         self.path = None
@@ -37,37 +35,20 @@ class DriveToPose(Subsystem):
 
 
 
-    def initializePath(self) -> Command:
-        self.targetPose=self.target()
+    def drivePathToPose(self,_targetPose, finalVel=None) -> Command:
+        self.targetPose=_targetPose
         self.robotPose=self.robot()
-
-#        if DriverStation.getAlliance()== DriverStation.Alliance.kRed:
-#            xt = 17.55 - self.robotPose.translation().X()
-#            yt = 8.051 - self.robotPose.translation().Y()
-#            self.robotPose = Pose2d(Translation2d(xt,yt),self.robotPose.rotation())
-            
-
-        self.start = Pose2d(
-            self.robotPose.translation(), 
-            self.getPathVelocityHeading(self.getFieldVelocity()))
+        if finalVel is None:
+            finalVel = 0
 
         """""
             self.getPathVelocityHeading(self.getFieldVelocity(), self.targetPose))
 
         """        
-
-
-        """
-        self.command = AutoBuilder.pathfindToPose(
-            self.targetPose,
-            self.constraints)
-        """
         listOfPoses = [Pose2d(self.robotPose.translation(),
                    self.getPathVelocityHeading(self.getFieldVelocity())), self.targetPose]
         self.waypoints = PathPlannerPath.waypointsFromPoses(listOfPoses) 
             
-
-        
         iss =  IdealStartingState(
         self.getVelocityMagnitude(self.getFieldVelocity()), self.robotPose.rotation())
         print("iss V: ",iss.velocity, "  iss R: ",iss.rotation)
@@ -75,38 +56,49 @@ class DriveToPose(Subsystem):
         self.path =  PathPlannerPath(
             self.waypoints, 
             self.constraints,iss, 
-            GoalEndState(0, self.targetPose.rotation())
+            GoalEndState(finalVel, self.targetPose.rotation())
         )
 
         self.path.preventFlipping = True
-
-        self.printStartState()
-
-        return (
-                (AutoBuilder.followPath(self.path))
-                )
-            
-
-
-    def printFinalState(self) -> None:  
-        print("CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC")
-        print("end X ",self.driveTrain.get_state().pose.translation().X())
-        print("end Y ",self.driveTrain.get_state().pose.translation().Y())        
-
-
-
-    def printStartState(self) ->None:
-        print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
-        print("start X ",self.driveTrain.get_state().pose.translation().X())
-        print("start Y ",self.driveTrain.get_state().pose.translation().Y())        
-        print("wp1 ",self.waypoints[0].anchor.X(),"  ", self.waypoints[0].anchor.Y())
-        print("wp2 ",self.waypoints[1].anchor.X(),"  ", self.waypoints[1].anchor.Y())
-        print("wp1 C",self.waypoints[0].nextControl.X(),"  ", self.waypoints[0].nextControl.Y())
-        print("wp2 C",self.waypoints[1].prevControl.X(),"  ", self.waypoints[1].prevControl.Y())        
-
-
+        return ((AutoBuilder.followPath(self.path)))
     
 
+
+    def drivePathFindToPose(self,_targetPose, finalVel=None) -> Command:
+        self.targetPose=_targetPose
+        self.robotPose=self.robot()
+        if finalVel is None:
+            finalVel = 0
+        return(AutoBuilder.pathfindToPose(self.targetPose, self.constraints,finalVel))           
+
+
+    def calculatePoseGoalFromTag(self, i : int, x_offset = None, y_offset = None):
+        poseTag = ConstantValues.VisionConstants.tags_list[i-1].pose.toPose2d()
+        rotTag = poseTag.rotation().radians()
+        transTag = poseTag.translation()
+        rotRobot=rotTag+pi
+
+        poseGoal =  Pose2d(
+            transTag.X()-x_offset*math.sin(rotTag)-y_offset*math.cos(rotTag),
+            transTag.Y()-x_offset*math.cos(rotTag)+(y_offset)*math.sin(rotTag),
+            Rotation2d(rotRobot))
+
+        return (poseGoal)
+
+
+
+# April Tag numnber, optoinal offset perpendicular to tag, offset parallel to tag
+
+    def drivePathToTag(self,i:int, x_offset = None, y_offset = None,velFinal = None):
+        return self.drivePathToPose(self.calculatePoseGoalFromTag(i,x_offset,y_offset),
+                                    velFinal)
+
+
+    def drivePathFindToTag(self,i:int, x_offset = None, y_offset = None, velFinal = None):
+        return self.drivePathFindToPose(self.calculatePoseGoalFromTag(i,x_offset,y_offset),
+                                        velFinal)
+
+      
     def getPathVelocityHeading(self,cs: ChassisSpeeds):
         if self.getVelocityMagnitude(cs) < 0.25:
             diff = Translation2d(self.targetPose.translation().X()-self.robotPose.translation().X(),
