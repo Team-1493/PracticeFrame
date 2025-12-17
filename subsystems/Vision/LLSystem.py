@@ -12,7 +12,7 @@ from wpilib import SmartDashboard
 
 from subsystems.Drive.driveTrainGenerate import DrivetrainGenerator
 
-class LLSystem(Subsystem):
+class llSystem(Subsystem):
     def __init__(self):
         self.robotState = RobotState.getInstance()
         self.driveTrain = DrivetrainGenerator.getInstance()
@@ -71,25 +71,29 @@ class LLSystem(Subsystem):
         rightHeadingStdDev = self.max_value
 
         leftEstimate=PoseEstimate()
+        rightEstimate=PoseEstimate()
 
+        
         leftEstimate = self.pollLL(self.Lconstants.CAMERA_NAME, self.previousLeftEstimate)
-        rightEstimate = self.pollLL(self.Rconstants.CAMERA_NAME, self.previousRightEstimate)
-      
-        if shouldAccept:
+        #rightEstimate = self.pollLL(self.Rconstants.CAMERA_NAME, self.previousRightEstimate)
+        
 
+        if shouldAccept and LimelightHelpers.get_tv(self.Lconstants.CAMERA_NAME):
+            print ("A")
             if (leftEstimate is not None and len(leftEstimate.raw_fiducials) > 0):
                 closestID,closestTagDist = self.minDist(leftEstimate.raw_fiducials)
                 leftStdDev = self.xyStdDevCoefficient * (closestTagDist ** 2) / leftEstimate.tag_count
                 self.leftHeadingStdDev = self.thetaStdDevCoefficient * (closestTagDist ** 2) / leftEstimate.tag_count
                 
-                if leftEstimate.avg_tag_dist > 3.5:
+                if leftEstimate.avg_tag_dist > 3.:
                     leftStdDev =self.max_value
 
+                print("B")
                 SmartDashboard.putNumber("LL-L closest ID",closestID)    
                 SmartDashboard.putNumber("LL-L closest Dist",closestTagDist)    
-            else:
-                SmartDashboard.putNumber("LL-L closest ID",-1)    
-                SmartDashboard.putNumber("LL-L closest Dist",-1)    
+#            else:
+#                SmartDashboard.putNumber("LL-L closest ID",-1)    
+#                SmartDashboard.putNumber("LL-L closest Dist",-1)    
 
 
             if (rightEstimate is not None and len(rightEstimate.raw_fiducials) > 0):
@@ -97,18 +101,17 @@ class LLSystem(Subsystem):
                 rightStdDev = self.xyStdDevCoefficient * (closestTagDist ** 2) / rightEstimate.tag_count
                 self.rightHeadingStdDev = self.thetaStdDevCoefficient * (closestTagDist ** 2) / rightEstimate.tag_count
                 
-                if rightEstimate.avg_tag_dist > 3.5:
+                if rightEstimate.avg_tag_dist > 3.0:
                     rightStdDev =self.max_value
                 
                 SmartDashboard.putNumber("LL-R closest ID",closestID)    
                 SmartDashboard.putNumber("LL-R closest Dist",closestTagDist)    
 
-            else:
-                SmartDashboard.putNumber("LL-R closest ID",-1)    
-                SmartDashboard.putNumber("LL-R closest Dist",-1)    
+#            else:
+#                SmartDashboard.putNumber("LL-R closest ID",-1)    
+#                SmartDashboard.putNumber("LL-R closest Dist",-1)    
 
-
-
+            """""
             if leftStdDev < rightStdDev:
                 self.driveTrain.add_vision_measurement(
                         leftEstimate.pose,
@@ -120,12 +123,13 @@ class LLSystem(Subsystem):
                         rightEstimate.pose,
                         utils.fpga_to_current_time(rightEstimate.timestamp_seconds),
                         (rightStdDev, rightStdDev, rightHeadingStdDev))
+            """            
                 
-        else:
-            SmartDashboard.putNumber("LL-L closest ID",-1)    
-            SmartDashboard.putNumber("LL-L closest Dist",-1)    
-            SmartDashboard.putNumber("LL-R closest ID",-1)    
-            SmartDashboard.putNumber("LL-R closest Dist",-1)    
+#        else:
+#            SmartDashboard.putNumber("LL-L closest ID",-1)    
+#            SmartDashboard.putNumber("LL-L closest Dist",-1)    
+#            SmartDashboard.putNumber("LL-R closest ID",-1)    
+#            SmartDashboard.putNumber("LL-R closest Dist",-1)    
 
 
 
@@ -146,13 +150,12 @@ class LLSystem(Subsystem):
 
 
 
-    def pollLL(self,id,previousEstimate):
+    def pollLL(self,id,previousEstimate: PoseEstimate):
         LimelightHelpers.set_robot_orientation(
                 id, self.robotState.getRotationDeg(), 0, 0, 0, 0, 0)
-
         if (LimelightHelpers.get_tv(id)):
             if previousEstimate is not None:
-                oldTimestamp =  previousEstimate.timestampSeconds 
+                oldTimestamp =  previousEstimate.timestamp_seconds 
             else:
                 oldTimestamp = self.max_value
                 
@@ -160,7 +163,7 @@ class LLSystem(Subsystem):
             
             if newEstimate is not None:
                 
-                if newEstimate.timestampSeconds == oldTimestamp:
+                if newEstimate.timestamp_seconds == oldTimestamp:
                     newEstimate = None
                 else:
                     previousEstimate = newEstimate
@@ -171,11 +174,11 @@ class LLSystem(Subsystem):
                 
 
 
-    def pollLLMT1(self,id,previousEstimate):
+    def pollLLMT1(self,id,previousEstimate: PoseEstimate):
 
-        if (LimelightHelpers.getTV(id)):
+        if (LimelightHelpers.get_tv(id)):
             if previousEstimate is not None:
-                oldTimestamp =  previousEstimate.timestampSeconds 
+                oldTimestamp =  previousEstimate.timestamp_seconds 
             else:
                 oldTimestamp = self.max_value
                 
@@ -183,7 +186,7 @@ class LLSystem(Subsystem):
             
             if newEstimate is not None:
                 
-                if newEstimate.timestampSeconds == oldTimestamp:
+                if newEstimate.timestamp_seconds == oldTimestamp:
                     newEstimate = None
                 else:
                     previousEstimate = newEstimate

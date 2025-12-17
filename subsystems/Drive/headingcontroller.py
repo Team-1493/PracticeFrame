@@ -33,7 +33,7 @@ class HeadingController(Subsystem):
 
         self.headingController.enableContinuousInput(-pi, pi)
         self.headingController.setTolerance(0.017);  #1 degree
-        self.headingRateTolerance = .1 # measured rotation rate at which we assume robot not rotating
+        self.headingRateTolerance = .05 # measured rotation rate at which we assume robot not rotating
  
         self.headingController.setGoal(self.targetRotation); 
 
@@ -44,7 +44,7 @@ class HeadingController(Subsystem):
         speed = self.getSpeed()
         a=stick_rot
 
-        if abs(stick_rot) > 0 : #or (abs(self.rotationRate)<self.headingRateTolerance and not self.state):
+        if abs(stick_rot) > 0 or (abs(self.rotationRate)>self.headingRateTolerance and not self.state):
             self.targetRotationPrev = self.targetRotation
             self.targetRotation = self.rotation
             self.state=False

@@ -17,7 +17,8 @@ from wpilib import DriverStation
 from wpilib import SmartDashboard
 
 from generated.tuner_constants import TunerConstants
-from subsystems.LLSystem import LLSystem
+from subsystems.Vision.LLSystem import llSystem
+from subsystems.Vision.PhotonVisionSim import PVisionSim
 from subsystems.Drive.driveTrainGenerate import DrivetrainGenerator
 from subsystems.Drive.headingcontroller import HeadingController
 
@@ -32,11 +33,12 @@ class RobotContainer:
     def __init__(self) -> None:
         self.drivetrain = DrivetrainGenerator.getInstance()
         self.headingController = HeadingController.getInstance()
-        self.limelightSytem = LLSystem()
+        self.limelightSytem = llSystem()
+        self.pvSim = PVisionSim()
         self._joystick = CommandXboxController(0)
 
         self.autoGenerator = autogenerator.AutoGenerator()
-        self.autoChooser = AutoBuilder.buildAutoChooser("Autos")
+        self.autoChooser = AutoBuilder.buildAutoChooser("Auto1")
         SmartDashboard.putData("Auto Chooser", self.autoChooser)
         
         self._logger = Telemetry(TunerConstants.speed_at_12_volts)
@@ -96,11 +98,11 @@ class RobotContainer:
         )
 
         self._joystick.button(7).whileTrue(
-            commands2.DeferredCommand(lambda:self.drivePath.drivePathToTag(17,-.5,.3)).finallyDo
+            commands2.DeferredCommand(lambda:self.drivePath.drivePathToTag(2,-.5,.8)).finallyDo
             (self.headingController.setTargetRotationInt))
         
         self._joystick.button(8).whileTrue(
-            commands2.DeferredCommand(lambda:self.drivePath.drivePathFindToTag(17,-.5,.3)).finallyDo
+            commands2.DeferredCommand(lambda:self.drivePath.drivePathFindToTag(2,-.5,.8)).finallyDo
             (self.headingController.setTargetRotationInt))        
 
 

@@ -972,3 +972,50 @@ class LimelightHelpers:
 	- private static boolean SYNCH_TAKESNAPSHOT(String tableName, String snapshotName)
 	- public static LimelightResults getLatestResults(String limelightName)
 	"""
+
+
+
+	""""
+	Methods to write to the network tables
+	For use with photonvision simulator, to supply the limelights with vision date during simulation
+	"""
+
+	@staticmethod
+	def set_limelight_NTDouble(table_name: str, entry_name: str, value:float ) :
+		LimelightHelpers.get_limelight_NTTableEntry(table_name, entry_name).setDouble(value)
+
+
+	@staticmethod
+	def set_botpose_estimate(pose: Pose2d, timestamp, latency, tag_count, tag_span, tag_dist, 
+						  tag_area, raw_fiducials, is_megatag_2):
+		pe=PoseEstimate(
+			pose,
+			timestamp, latency, tag_count, tag_span, tag_dist, tag_area, raw_fiducials, is_megatag_2
+		)
+		
+
+	@staticmethod
+	def set_tv(limelight_name: str, value: float) -> bool:
+		"""
+		Does the Limelight have a valid target?
+		@param limelight_name Name of the Limelight camera ("" for default)
+		@return True if a valid target is present, false otherwise
+		"""
+		return 1.0 == LimelightHelpers.set_limelight_NTDouble(limelight_name, "tv",value)
+
+
+	@staticmethod
+	def set_botpose_estimate_wpiblue_megatag2(pose: Pose2d, timestamp, latency, tag_count, tag_span, tag_dist, 
+						  tag_area, raw_fiducials, is_megatag_2, name:str):
+		
+
+		array = LimelightHelpers.pose_2d_to_array(pose)
+		array.append(latency)
+		array.append(tag_count)
+		array.append(tag_span)
+		array.append(tag_dist)
+		array.append(tag_area)
+		array.extend(raw_fiducials)
+		return 1.0 == LimelightHelpers.set_limelight_NTDoubleArray(name, "botpose_orb_wpiblue",array)
+
+		

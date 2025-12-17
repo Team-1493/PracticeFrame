@@ -2,12 +2,11 @@ from math import pi
 from robotpy_apriltag import  AprilTag,AprilTagField,AprilTagFieldLayout
 from wpimath.geometry import Pose3d, Rotation3d,Translation3d
 
-
 class ConstantValues():
 
     
     class LeftLimelightConstants():
-        CAMERA_NAME = "limelight-left"
+        CAMERA_NAME = "limelightLeft"
         X_OFFSET = 0 # forward positive
         Y_OFFSET = 0 # right positive
         Z_OFFSET = 0 # up positive
@@ -16,7 +15,7 @@ class ConstantValues():
         THETA_Z_OFFSET = 0 # yaw
 
     class RightLimelightConstants():
-        CAMERA_NAME = "limelight-right"
+        CAMERA_NAME = "limelightRight"
         X_OFFSET = 0 # forward positive
         Y_OFFSET = 0 # right positive
         Z_OFFSET = 0 # up positive
@@ -68,8 +67,10 @@ class ConstantValues():
         
         # tags facing robot have r3 = 180 degrees
         
-        tags_list = [tag1,tag2,tag3,tag4,tag5,tag6,tag7,tag8,tag9,tag10,tag11,
-                     tag12,tag13,tag14,tag15,tag16,tag17,tag18,tag19,tag20,tag21]
+#        tags_list = [tag1,tag2,tag3,tag4,tag5,tag6,tag7,tag8,tag9,tag10,tag11,
+ #                    tag12,tag13,tag14,tag15,tag16,tag17,tag18,tag19,tag20,tag21]
+
+        tags_list = [tag16,tag17,tag18,tag19,tag20]
         field_length_meters = 16.48 # Example field dimensions
         field_width_meters = 8.11 # Example field dimensions
         field_layout = AprilTagFieldLayout(tags_list, field_length_meters, field_width_meters)
