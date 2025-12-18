@@ -35,7 +35,9 @@ class HeadingController(Subsystem):
 
         self.headingController.enableContinuousInput(-pi, pi)
         self.headingController.setTolerance(0.017);  #1 degree
-        self.headingRateTolerance = .1 # measured rotation rate at which we assume robot not rotating
+        # Need to tune this carefullly - balance between having setpoint drift 
+        # and not complating an auto rotation
+        self.headingRateTolerance = .3 # measured rotation rate at which we assume robot not rotating
  
         self.headingController.setGoal(self.targetRotation); 
 
@@ -63,10 +65,10 @@ class HeadingController(Subsystem):
         
 #        print("stick_rot I: ",f"{a:.4f}", "   rot: ", f"{self.rotation:.4f}", "   Rot Rate: ",f"{self.rotationRate:.4f}", 
 #              "   rot_T: ",f"{self.targetRotation:.4f}", "   state: ", self.state, "   stick_rot F: ",f"{stick_rot:.4f}" ) 
-#        SmartDashboard.putNumber("controller at SP",self.headingController.atSetpoint())
-#        SmartDashboard.putNumber("controller SP",self.headingController.getSetpoint().position)
-#        SmartDashboard.putNumber("controller err",self.headingController.getPositionError())
-#        SmartDashboard.putNumber("stick rot",stick_rot)        
+        SmartDashboard.putNumber("controller at SP",self.headingController.atSetpoint())
+        SmartDashboard.putNumber("controller SP",self.headingController.getSetpoint().position*180/3.14)
+        SmartDashboard.putNumber("controller err",self.headingController.getPositionError()*180/3.14)
+        SmartDashboard.putNumber("stick rot",stick_rot)        
         return stick_rot
 
 
