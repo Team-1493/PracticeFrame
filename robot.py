@@ -74,7 +74,8 @@ class MyRobot(commands2.TimedCommandRobot):
         # this line or comment it out.
         if self.autonomousCommand:
             self.autonomousCommand.cancel()
-
+        self.container.setHeadingControlToCurrentrHeading()
+        
     def teleopPeriodic(self) -> None:
         """This function is called periodically during operator control"""
         pass
@@ -82,3 +83,4 @@ class MyRobot(commands2.TimedCommandRobot):
     def testInit(self) -> None:
         # Cancels all running commands at the start of test mode
         commands2.CommandScheduler.getInstance().cancelAll()
+        self.container.setHeadingControlToCurrentrHeading()

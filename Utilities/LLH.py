@@ -1008,7 +1008,6 @@ class LimelightHelpers:
 	def set_botpose_estimate_wpiblue_megatag2(pose: Pose2d, timestamp, latency, tag_count, tag_span, tag_dist, 
 						  tag_area, raw_fiducials, is_megatag_2, name:str):
 		
-
 		array = LimelightHelpers.pose_2d_to_array(pose)
 		array.append(latency)
 		array.append(tag_count)

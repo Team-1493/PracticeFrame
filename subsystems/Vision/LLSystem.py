@@ -58,7 +58,8 @@ class llSystem(Subsystem):
 
     
     def update(self): 
-
+        SmartDashboard.putBoolean("LL left tv",LimelightHelpers.get_tv(self.Lconstants.CAMERA_NAME))
+        SmartDashboard.putBoolean("LL right tv",LimelightHelpers.get_tv(self.Rconstants.CAMERA_NAME))        
         """ check if we are moving too fast for an accurate camera measurement """
         shouldAccept = (self.robotState.getChassisSpeedsNorm()<3 
                         and abs(self.robotState.getRotationalSpeedsRPS())<2)
@@ -70,49 +71,52 @@ class llSystem(Subsystem):
         rightStdDev = self.max_value
         rightHeadingStdDev = self.max_value
 
-        leftEstimate=PoseEstimate()
-        rightEstimate=PoseEstimate()
+        leftEstimate=None
+        rightEstimate=None
 
-        
         leftEstimate = self.pollLL(self.Lconstants.CAMERA_NAME, self.previousLeftEstimate)
-        #rightEstimate = self.pollLL(self.Rconstants.CAMERA_NAME, self.previousRightEstimate)
+        rightEstimate = self.pollLL(self.Rconstants.CAMERA_NAME, self.previousRightEstimate)
         
 
-        if shouldAccept and LimelightHelpers.get_tv(self.Lconstants.CAMERA_NAME):
-            print ("A")
-            if (leftEstimate is not None and len(leftEstimate.raw_fiducials) > 0):
-                closestID,closestTagDist = self.minDist(leftEstimate.raw_fiducials)
-                leftStdDev = self.xyStdDevCoefficient * (closestTagDist ** 2) / leftEstimate.tag_count
-                self.leftHeadingStdDev = self.thetaStdDevCoefficient * (closestTagDist ** 2) / leftEstimate.tag_count
-                
-                if leftEstimate.avg_tag_dist > 3.:
+        if shouldAccept :
+            if leftEstimate is not None:
+              if len(leftEstimate.raw_fiducials) > 0:
+                closestID,closestTagDist,farthestID,farthestTagDist = self.minmaxDist(leftEstimate.raw_fiducials)
+                leftStdDev = self.xyStdDevCoefficient * (leftEstimate.avg_tag_dist ** 2) / leftEstimate.tag_count
+                leftHeadingStdDev = self.thetaStdDevCoefficient * (leftEstimate.avg_tag_dist ** 2) / leftEstimate.tag_count
+                if leftEstimate.avg_tag_dist > 5:
                     leftStdDev =self.max_value
-
-                print("B")
+            
+                
                 SmartDashboard.putNumber("LL-L closest ID",closestID)    
                 SmartDashboard.putNumber("LL-L closest Dist",closestTagDist)    
-#            else:
-#                SmartDashboard.putNumber("LL-L closest ID",-1)    
-#                SmartDashboard.putNumber("LL-L closest Dist",-1)    
-
-
-            if (rightEstimate is not None and len(rightEstimate.raw_fiducials) > 0):
-                closestID,closestTagDist = self.minDist(rightEstimate.raw_fiducials)
-                rightStdDev = self.xyStdDevCoefficient * (closestTagDist ** 2) / rightEstimate.tag_count
-                self.rightHeadingStdDev = self.thetaStdDevCoefficient * (closestTagDist ** 2) / rightEstimate.tag_count
+                SmartDashboard.putNumber("LL-L fartheet ID",farthestID)    
+                SmartDashboard.putNumber("LL-L farthest Dist",farthestTagDist)                    
                 
-                if rightEstimate.avg_tag_dist > 3.0:
+
+
+            if rightEstimate is not None:
+              if len(rightEstimate.raw_fiducials) > 0:
+                closestID,closestTagDist,farthestID,farthestTagDist = self.minmaxDist(rightEstimate.raw_fiducials)
+                rightStdDev = self.xyStdDevCoefficient * (rightEstimate.avg_tag_dist ** 2) / rightEstimate.tag_count
+                rightHeadingStdDev = self.thetaStdDevCoefficient * (rightEstimate.avg_tag_dist ** 2) / rightEstimate.tag_count
+                if rightEstimate.avg_tag_dist > 5:
                     rightStdDev =self.max_value
                 
                 SmartDashboard.putNumber("LL-R closest ID",closestID)    
                 SmartDashboard.putNumber("LL-R closest Dist",closestTagDist)    
+                SmartDashboard.putNumber("LL-R fartheet ID",farthestID)    
+                SmartDashboard.putNumber("LL-R farthest Dist",farthestTagDist)                    
 
-#            else:
-#                SmartDashboard.putNumber("LL-R closest ID",-1)    
-#                SmartDashboard.putNumber("LL-R closest Dist",-1)    
-
-            """""
+            
             if leftStdDev < rightStdDev:
+                SmartDashboard.putNumber("LL Std Dev XY",leftStdDev)                                
+                SmartDashboard.putNumber("LL Std Dev Rot",leftHeadingStdDev)                                
+                SmartDashboard.putNumber("LL Num Targ",leftEstimate.tag_count)                
+                SmartDashboard.putNumber("LL pose X",leftEstimate.pose.translation().X())
+                SmartDashboard.putNumber("LL pose Y",leftEstimate.pose.translation().Y()) 
+                SmartDashboard.putNumber("LL pose R",leftEstimate.pose.rotation().radians() )                               
+                SmartDashboard.putNumber("LL Dist avg",leftEstimate.avg_tag_dist)    
                 self.driveTrain.add_vision_measurement(
                         leftEstimate.pose,
                         utils.fpga_to_current_time(leftEstimate.timestamp_seconds),
@@ -123,29 +127,29 @@ class llSystem(Subsystem):
                         rightEstimate.pose,
                         utils.fpga_to_current_time(rightEstimate.timestamp_seconds),
                         (rightStdDev, rightStdDev, rightHeadingStdDev))
-            """            
-                
-#        else:
-#            SmartDashboard.putNumber("LL-L closest ID",-1)    
-#            SmartDashboard.putNumber("LL-L closest Dist",-1)    
-#            SmartDashboard.putNumber("LL-R closest ID",-1)    
-#            SmartDashboard.putNumber("LL-R closest Dist",-1)    
 
 
 
 
 
-    def minDist(self,rf:List[RawFiducial]):
+
+    def minmaxDist(self,rf:List[RawFiducial]):
+        maxD=0
+        maxID=0
         minD=9999
         minID=0
         iMax=len(rf)
         i=0
+
         while i<iMax:
             if rf[i].dist_to_camera<minD:
                 minID=i
                 minD=rf[i].dist_to_camera
-                i=i+1
-        return rf[minID].id,minD
+            if rf[i].dist_to_camera>maxD:
+                maxID=i
+                maxD=rf[i].dist_to_camera                
+            i=i+1
+        return rf[minID].id,minD,rf[maxID].id,maxD
 
 
 
@@ -200,84 +204,3 @@ class llSystem(Subsystem):
     def periodic(self):
         self.update()
                         
-
-"""""
-
-    
-
-
-        if (shouldAccept) {
-            if (leftEstimate.isPresent() && leftEstimate.get().rawFiducials.length > 0) {
-                double closestTagDist = Arrays.stream(leftEstimate.get().rawFiducials)
-                        .mapToDouble(fiducial -> fiducial.distToCamera)
-                        .min()
-                        .getAsDouble();
-                leftStdDev = xyStdDevCoefficient * Math.pow(closestTagDist, 2) / leftEstimate.get().tagCount;
-                leftHeadingStdDev = thetaStdDevCoefficient * Math.pow(closestTagDist, 2) / leftEstimate.get().tagCount;
-                if (leftEstimate.get().avgTagDist > 3.5) leftStdDev = Double.MAX_VALUE;
-            }
-            if (rightEstimate.isPresent() && rightEstimate.get().rawFiducials.length > 0) {
-                double closestTagDist = Arrays.stream(rightEstimate.get().rawFiducials)
-                        .mapToDouble(fiducial -> fiducial.distToCamera)
-                        .min()
-                        .getAsDouble();
-                rightStdDev = xyStdDevCoefficient * Math.pow(closestTagDist, 2) / rightEstimate.get().tagCount;
-                rightHeadingStdDev =
-                        thetaStdDevCoefficient * Math.pow(closestTagDist, 2) / rightEstimate.get().tagCount;
-                if (rightEstimate.get().avgTagDist > 3.5) rightStdDev = Double.MAX_VALUE;
-            }
-            if (leftStdDev < rightStdDev) {
-                drivetrain.addVisionMeasurement(
-                        leftEstimate.get().pose,
-                        Utils.fpgaToCurrentTime(leftEstimate.get().timestampSeconds),
-                        VecBuilder.fill(leftStdDev, leftStdDev, leftHeadingStdDev));
-                robotState.seenReefFaceID((int) LimelightHelpers.getFiducialID(LeftLimelightConstants.CAMERA_NAME));
-            } else if (rightStdDev < leftStdDev) {
-                drivetrain.addVisionMeasurement(
-                        rightEstimate.get().pose,
-                        Utils.fpgaToCurrentTime(rightEstimate.get().timestampSeconds),
-                        VecBuilder.fill(rightStdDev, rightStdDev, rightHeadingStdDev));
-                robotState.seenReefFaceID((int) LimelightHelpers.getFiducialID(RightLimelightConstants.CAMERA_NAME));
-            }
-        }
-    }
-
-    public Optional<PoseEstimate> pollLL(String id, PoseEstimate previousEstimate) {
-        LimelightHelpers.SetRobotOrientation(
-                id, robotState.getFieldToRobot().getRotation().getDegrees(), 0, 0, 0, 0, 0);
-
-        if (LimelightHelpers.getTV(id)) {
-            double oldTimestamp = previousEstimate != null ? previousEstimate.timestampSeconds : Double.MAX_VALUE;
-            PoseEstimate newEstimate = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(id);
-            if (newEstimate != null) {
-                Logger.recordOutput(id + " MT2 pose", newEstimate.pose);
-                if (newEstimate.timestampSeconds == oldTimestamp) {
-                    return Optional.empty(); // no new data
-                } else {
-                    previousEstimate = newEstimate;
-                    return Optional.of(newEstimate);
-                }
-            }
-        }
-        return Optional.empty();
-    }
-
-    public Optional<PoseEstimate> pollLLMT1(String id, PoseEstimate previousEstimate) {
-        if (LimelightHelpers.getTV(id)) {
-            double oldTimestamp = previousEstimate != null ? previousEstimate.timestampSeconds : Double.MAX_VALUE;
-            PoseEstimate newEstimate = LimelightHelpers.getBotPoseEstimate_wpiBlue(id);
-            if (newEstimate != null) {
-                Logger.recordOutput(id + " MT1 pose", newEstimate.pose);
-                if (newEstimate.timestampSeconds == oldTimestamp) {
-                    return Optional.empty(); // no new data
-                } else {
-                    previousEstimate = newEstimate;
-                    return Optional.of(newEstimate);
-                }
-            }
-        }
-        return Optional.empty();
-    }
-}
-
-"""

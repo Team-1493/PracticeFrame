@@ -73,7 +73,7 @@ class PVisionSim(Subsystem):
                     self.targetVisible=True
                     dist = target.getBestCameraToTarget().translation().norm()
                     avg_dist=avg_dist+dist
-                    rawFid.append(target.getFiducialId()) 
+                    rawFid.append(target.getFiducialId())   # To Do - rewrite more concise 
                     rawFid.append(0)  #txnc
                     rawFid.append(0)  #tync
                     rawFid.append(target.getArea())
@@ -99,12 +99,18 @@ class PVisionSim(Subsystem):
                 SmartDashboard.putNumber("PV num Targets ",length)    
             
             if (estimatedRobotPose is not None) :
-                if avg_dist<3:     
+# Put this back in if using PV for pose correction, comment out if using PV to drive LL in simulation                
+                
+                if avg_dist<300:
                     estPose =estimatedRobotPose.estimatedPose.toPose2d() 
                     stdDev =    (0.3, 0.3, 999)
+                    """                         
+
                     self.driveTrain.add_vision_measurement(
                         estPose,
                         utils.fpga_to_current_time(estimatedRobotPose.timestampSeconds), stdDev)
+                    """
+
                     SmartDashboard.putNumber("PV pose X",estPose.translation().X())
                     SmartDashboard.putNumber("PV pose Y",estPose.translation().Y()) 
                     SmartDashboard.putNumber("PV pose R",estPose.rotation().radians() )                               
@@ -112,7 +118,6 @@ class PVisionSim(Subsystem):
                 
                 tv=True
                 LimelightHelpers.set_tv(self.llLeftName, tv)
-
                 LimelightHelpers.set_botpose_estimate_wpiblue_megatag2(
                     estimatedRobotPose.estimatedPose.toPose2d(),
                     result.getTimestampSeconds(),
