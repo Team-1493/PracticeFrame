@@ -10,10 +10,8 @@ from Constants import ConstantValues
 #from wpimath.geometry import Pose2d
 from math import pi
 
-import math
 
-
-class DrivePath(Subsystem):
+class DriveToGoal():
     def __init__(self,
                 _robot: typing.Callable[[], Pose2d],
                  ) -> None:
@@ -34,17 +32,18 @@ class DrivePath(Subsystem):
 
 
 
-
+# Generate a commanmd to drive to a given pose using path-on-the-fly (create a path from the start and end poses)  
+# Control the direction of travel at each waypiont usaing the the rotation of the poses used in wayppointsFromPoses
+# Robot rotation controlled by GoalEndState
+# Does not avoid feild elements
     def drivePathToPose(self,_targetPose, finalVel=None) -> Command:
         self.targetPose=_targetPose
         self.robotPose=self.robot()
         if finalVel is None:
             finalVel = 0
 
-        """""
-            self.getPathVelocityHeading(self.getFieldVelocity(), self.targetPose))
+#             self.getPathVelocityHeading(self.getFieldVelocity(), self.targetPose))
 
-        """        
         listOfPoses = [Pose2d(self.robotPose.translation(),
                    self.getPathVelocityHeading(self.getFieldVelocity())), self.targetPose]
         self.waypoints = PathPlannerPath.waypointsFromPoses(listOfPoses) 
@@ -63,7 +62,8 @@ class DrivePath(Subsystem):
         return ((AutoBuilder.followPath(self.path)))
     
 
-
+# Generate a command to drive a path between two poses using PathFind.
+# Will avoid field elements, but no control over direction of travel
     def drivePathFindToPose(self,_targetPose, finalVel=None) -> Command:
         self.targetPose=_targetPose
         self.robotPose=self.robot()
@@ -72,6 +72,7 @@ class DrivePath(Subsystem):
         return(AutoBuilder.pathfindToPose(self.targetPose, self.constraints,finalVel))           
 
 
+# Determine a goal pose relative to a given tag. 
     def calculatePoseGoalFromTag(self, i : int, x_offset = None, y_offset = None):
         poseTag = ConstantValues.VisionConstants.tags_list[i-1].pose.toPose2d()
         rotTag = poseTag.rotation().radians()
@@ -87,13 +88,14 @@ class DrivePath(Subsystem):
 
 
 
-# April Tag numnber, optoinal offset perpendicular to tag, offset parallel to tag
-
+# Get a command to drive a path-on-the-fly from robot position to a tag.
+# Provide april Tag numnber, optoinal offset perpendicular to tag, offset parallel to tag
     def drivePathToTag(self,i:int, x_offset = None, y_offset = None,velFinal = None):
         return self.drivePathToPose(self.calculatePoseGoalFromTag(i,x_offset,y_offset),
                                     velFinal)
 
-
+# Get a command to pathfind from robot position to a tag.
+# Provide april Tag numnber, optoinal offset perpendicular to tag, offset parallel to tag
     def drivePathFindToTag(self,i:int, x_offset = None, y_offset = None, velFinal = None):
         return self.drivePathFindToPose(self.calculatePoseGoalFromTag(i,x_offset,y_offset),
                                         velFinal)

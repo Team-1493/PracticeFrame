@@ -20,11 +20,14 @@ from generated.tuner_constants import TunerConstants
 from subsystems.Vision.LLSystem import llSystem
 from subsystems.Vision.PhotonVisionSim import PVisionSim
 from subsystems.Drive.driveTrainGenerate import DrivetrainGenerator
+
 from subsystems.Drive.headingcontroller import HeadingController
 
-from Commands.drivepath import DrivePath
-from Commands.drivecommand import DriveTeleopCommand
-from Auto import autogenerator
+from Commands.DrivePathGenerator import DrivePath
+from Commands.DriveToGoalGenerator import DriveToGoal
+
+from Commands.Drivecommand import DriveTeleopCommand
+from Auto.AutoCommandGenerator import AutoGenerator
 from pathplannerlib.auto import PathPlannerAuto
 from pathplannerlib.auto import AutoBuilder
 
@@ -37,7 +40,7 @@ class RobotContainer:
         self.pvSim = PVisionSim()
         self._joystick = CommandXboxController(0)
 
-        self.autoGenerator = autogenerator.AutoGenerator()
+        self.autoGenerator = AutoGenerator()
         self.autoChooser = AutoBuilder.buildAutoChooser("Auto1")
         SmartDashboard.putData("Auto Chooser", self.autoChooser)
         
@@ -48,8 +51,10 @@ class RobotContainer:
         self._max_speed = (TunerConstants.speed_at_12_volts)  
         
         self.drivePath = DrivePath(
-                lambda: self.drivetrain.get_state().pose
-        )
+                lambda: self.drivetrain.get_state().pose)
+        
+        self.driveToGoal = DriveToGoal(
+                lambda: self.drivetrain.get_state().pose)        
 
         self.driveTeleopCommand = DriveTeleopCommand(self.drivetrain,
                 lambda: -self._joystick.getRawAxis(1),

@@ -1,4 +1,4 @@
-from commands2 import Command, Subsystem
+from commands2 import Command
 from wpimath.geometry import Pose2d, Rotation2d
 from pathplannerlib.auto import AutoBuilder
 from pathplannerlib.controller import PPHolonomicDriveController
@@ -11,7 +11,7 @@ from phoenix6 import swerve
 from wpimath.kinematics import ChassisSpeeds
 
 
-class AutoGenerator(Subsystem):
+class AutoGenerator():
 
     def __init__(self):
         self.robotState = RobotState.getInstance()
