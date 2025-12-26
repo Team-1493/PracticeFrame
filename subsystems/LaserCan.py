@@ -17,13 +17,17 @@ class LaserCAN:
         
     def get_distance_mm(self,api:int) -> int | None:
         # Read CAN frame
-        b = self.can.readPacketNew(api, self.packet)
+
+        if RobotBase.isSimulation():
+            b = LLSystem.llSystem.readPacketNew(api,self.packet)
+        else:
+            b = self.can.readPacketNew(api, self.packet)
 
         if b is False:
             self.status=1
             return None
 
-        print("packet  ",self.packet.data[0],"  ",self.packet.data[1],"  ",self.packet.data[2],"   ",self.packet.data[3],"   ",self.packet.data[4],"  ",self.packet.data[5],"  ",self.packet.data[6],"   ",self.packet.data[7])
+        #print("packet  ",self.packet.data[0],"  ",self.packet.data[1],"  ",self.packet.data[2],"   ",self.packet.data[3],"   ",self.packet.data[4],"  ",self.packet.data[5],"  ",self.packet.data[6],"   ",self.packet.data[7])
 
         distance_mm = distance_mm = self.packet.data[2] | (self.packet.data[1] << 8)
 ##        ambient = self.packet.data[5] | (self.packet.data[6] << 8)
@@ -40,9 +44,6 @@ class LaserCAN:
 
     def get_distance_meters(self) -> float | None:
         dist_mm = self.get_distance_mm(0)
-
-        if RobotBase.isSimulation():
-            dist_mm = LLSystem.llSystem.LC_dist
 
         if dist_mm is None:
             return -1

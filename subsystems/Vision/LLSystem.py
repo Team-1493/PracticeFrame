@@ -5,7 +5,7 @@ from Utilities.LLH import LimelightHelpers
 from Utilities.LLH import PoseEstimate
 from Utilities.LLH import RawFiducial
 from phoenix6 import utils
-from wpilib import DriverStation, RobotBase
+from wpilib import CANData, DriverStation, RobotBase
 from robotstate import RobotState
 from Constants import ConstantValues
 from wpilib import SmartDashboard
@@ -14,11 +14,11 @@ from subsystems.Drive.driveTrainGenerate import DrivetrainGenerator
 from subsystems.LaserCan import LaserCAN
 
 class llSystem(Subsystem):
-    LC_dist=9999
-    LC_status = 1
+    LC_dist = 32000
+    LC_cam = ConstantValues.LeftLimelightConstants.CAMERA_NAME
 
     def __init__(self):
-        self.LC = LaserCAN(0,6,6)
+        
         self.closestTagDist=9999
         self.robotState = RobotState.getInstance()
         self.driveTrain = DrivetrainGenerator.getInstance()
@@ -39,9 +39,12 @@ class llSystem(Subsystem):
         self.configfureLimelights()
         self.zeroAndseedIMU(0)
 
+        self.LC = LaserCAN(0,6,6)
 
     def periodic(self):
         self.update()
+        self.LC.get_distance_meters()
+
 
 
     def update(self): 
@@ -83,7 +86,7 @@ class llSystem(Subsystem):
                 if estimate.avg_tag_dist > 5:
                     stdDev = self.max_value
                         
-                
+                llSystem.LC_dist = self.closestTagDist
                 SmartDashboard.putNumber("LL closest ID",closestID)    
                 SmartDashboard.putNumber("LL closest Dist",self.closestTagDist)                                    
                 SmartDashboard.putNumber("LL Std Dev XY",stdDev)                                
@@ -105,20 +108,6 @@ class llSystem(Subsystem):
                         utils.fpga_to_current_time(estimate.timestamp_seconds),
                         (stdDev, stdDev, headingStdDev))
                 
-
-
-# Use this to for simulating the lasercan. The laseran class can read llSysteml.LC_dist
-# and llSystem.LC_status as static variables when the distance and status are not available from 
-        if(RobotBase.isSimulation):
-            llSystem.LC_status = 1
-            llSystem.LC_dist=9999
-            if LimelightHelpers.get_tv(self.Lconstants.CAMERA_NAME): 
-                if self.closestTagDist is not None:
-                    if self.closestTagDist<3:
-                        llSystem.LC_status=0
-                        llSystem.LC_dist=self.closestTagDist*1000
-            SmartDashboard.putNumber("LC Dist",self.LC.get_distance_meters())
-            SmartDashboard.putNumber("LC Status",self.LC.get_status())        
 
 #    def get_minDist():
 #        return         
@@ -212,6 +201,30 @@ class llSystem(Subsystem):
 # megatag still uses all visible tags
     def set_priority_tag(self,id):
         LimelightHelpers.set_priority_tag_id(self.Lconstants.CAMERA_NAME,2)        
-        LimelightHelpers.set_priority_tag_id(self.Rconstants.CAMERA_NAME,2)                
+        LimelightHelpers.set_priority_tag_id(self.Rconstants.CAMERA_NAME,2)        
+
+
+
+# Use this to for simulating the lasercan.
+    def readPacketNew(api: int, packet:CANData):
+        status = 1
+        dist = int(32000)
+        b = False
+
+        if LimelightHelpers.get_tv(llSystem.LC_cam): 
+                if llSystem.LC_dist is not None:
+                    if llSystem.LC_dist<4:
+                        status=0
+                        dist=int(llSystem.LC_dist*1000)
+                        b = True
+
+        high_byte = dist >> 8
+        low_byte = dist & 0xFF
+        
+        packet.data[0] = status
+        packet.data[2] = low_byte
+        packet.data[1] = high_byte    
+
+        return b            
 
                         
