@@ -150,6 +150,24 @@ public class Camera extends SubsystemBase {
         return angle;
     }
 
+    public double getTagHeight(int id){
+        double height= kTagLayout.getTags().get(id-1).pose.getZ();
+        SmartDashboard.putNumber("Target Height", height);
+        return height;
+    }
+
+    public double getTagX(int id){
+        double height= kTagLayout.getTags().get(id-1).pose.getX();
+        SmartDashboard.putNumber("Target Height", height);
+        return height;
+    }
+
+
+    public double getTagY(int id){
+        double height= kTagLayout.getTags().get(id-1).pose.getY();
+        SmartDashboard.putNumber("Target Height", height);
+        return height;
+    }    
 
 
     @Override

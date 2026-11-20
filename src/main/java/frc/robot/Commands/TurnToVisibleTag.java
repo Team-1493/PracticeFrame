@@ -30,8 +30,8 @@ public class TurnToVisibleTag extends Command {
     double finalRawRotation;
     double deltaRot;
 
-    private double followPose_Trans_kP=1;
-    private double followPose_Trans_kD=.1;
+    private double followPose_Trans_kP=3;
+    private double followPose_Trans_kD=0;
     private double followPose_Rot_kP=4;
     private double followPose_Rot_kD=.5;
     private double followPose_Trans_maxV=2;
@@ -74,13 +74,19 @@ public class TurnToVisibleTag extends Command {
       robotPose2d=sd.getState().Pose;
       if (target != null){
         targetAngle = camera.getTagAngle(26)+Math.PI;
-        double targetX =robotPose2d.getX()+1/Math.tan(Math.PI*target.pitch/180.)-1/Math.tan(Math.PI*30/180);
-        double targetY = robotPose2d.getY()-1/Math.sin(Math.PI*target.yaw/180.);
-        pidx.setGoal(targetX);
+        double targetX =robotPose2d.getX()+camera.getTagHeight(26)/Math.tan(Math.PI*target.pitch/180.);
+        double targetY = robotPose2d.getY()-targetX*Math.tan(target.yaw*Math.PI/180.);
+        pidx.setGoal(targetX-1);
         pidy.setGoal(targetY);
         pidr.setGoal(targetAngle);
-
-        System.out.println("targets "+targetX+"  "+targetY+"  "+targetAngle);
+        SmartDashboard.putNumber("TargetX",targetX);
+        SmartDashboard.putNumber("TargetY",targetY);
+        SmartDashboard.putNumber("TargetAngle",targetAngle);
+        double yawCalc = 180*Math.atan(( robotPose2d.getY()-camera.getTagY(26)) /  
+            ( robotPose2d.getX()-camera.getTagX(26)))/Math.PI;
+ 
+        System.out.println(targetX+"  "+target.yaw+"  "+yawCalc+"  "+
+          "  "+targetY);
         state = 1;
       }
 
@@ -88,10 +94,10 @@ public class TurnToVisibleTag extends Command {
           double dx = -pidx.calculate(robotPose2d.getX());
           double dy = -pidy.calculate(robotPose2d.getY());
           double dr = pidr.calculate(robotPose2d.getRotation().getRadians());
-          System.out.println("dx,dy,dz "+dx+"  "+dy+"  "+dr);
+//        System.out.println("dx,dy,dz "+dx+"  "+dy+"  "+dr);
 
 
-          sd.setControl(drive.withVelocityX(0)
+          sd.setControl(drive.withVelocityX(dx)
               .withVelocityY(dy) 
               .withRotationalRate(dr)); 
       
@@ -122,7 +128,7 @@ public class TurnToVisibleTag extends Command {
 
 
       pidx = new ProfiledPIDController(
-             followPose_Trans_kP*.8,
+             followPose_Trans_kP*.5,
              0,
              followPose_Trans_kD, 
              new TrapezoidProfile.Constraints(
