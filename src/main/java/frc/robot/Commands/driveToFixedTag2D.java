@@ -2,6 +2,24 @@
 // Open Source Software; you can modify and/or share it under the terms of
 // the WPILib BSD license file in the root directory of this project.
 
+
+// *** Drive to a tag of known height off the ground and known orientation.
+// ** Here we specify a tag number and use the field tag layout to determine the tag position
+// *** Only the tag height and rotation are used from the layout!  
+// *** We use the tag height, rotation, and  pitch and yaw from the camnera
+// *** to calculate the relative camera to tag transformation
+
+// *** The robot orientation MUST be zerod to the same field zero that the tag orientation is referenced to,
+// *** The robot must be able to see the tag at the start of the command.  
+
+// *** The goal position is continuously updated.
+// *** If the robot loses view of the tag it will contoniue to the last known goal position.
+// *** This command uses pitch and yaw from 2D targeting, camera can run in 2D or 3D mode. 
+
+// IMPORTANT TO UNDERSTAND - This works in 2D because the tag height and tag orientation are known|,
+// This lets us calculate the camera to tag transformation from only pitch and yaw
+// If the tag height and rotation are not known, 3D targeting is needed to get the camera to tag transformation!!!
+
 package frc.robot.Commands;import frc.robot.subsystems.Camera;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
 import frc.robot.subsystems.Camera.targetType;
@@ -19,10 +37,12 @@ import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 
-public class TurnToVisibleTag extends Command {
+public class driveToFixedTag2D extends Command {
     private final CommandSwerveDrivetrain sd;
     private final Camera camera;
+    // state 0 - no goal pose calculated yet, state 1 = goal pose has been calculated
     int state = 0;
+    int tagID = 26;
     PhotonTrackedTarget target;
     double targetAngle;
     Pose2d robotPose2d;
@@ -30,6 +50,7 @@ public class TurnToVisibleTag extends Command {
     double finalRawRotation;
     double deltaRot;
 
+    //  PID Controller Constants
     private double followPose_Trans_kP=3;
     private double followPose_Trans_kD=0;
     private double followPose_Rot_kP=4;
@@ -42,7 +63,7 @@ public class TurnToVisibleTag extends Command {
     ProfiledPIDController pidx, pidy, pidr;
     private final SwerveRequest.FieldCentric drive = new SwerveRequest.FieldCentric().withDriveRequestType(DriveRequestType.OpenLoopVoltage);
 
-  public TurnToVisibleTag(CommandSwerveDrivetrain m_sd, Camera m_cam) { 
+  public driveToFixedTag2D(CommandSwerveDrivetrain m_sd, Camera m_cam) { 
       sd = m_sd;
       camera = m_cam;
       addRequirements(sd,camera);
@@ -65,30 +86,35 @@ public class TurnToVisibleTag extends Command {
     pidy.setTolerance(0.0254);  // 1 inch
 
 
+
   }
 
   // Called every time the scheduler runs while the command is scheduled.
   @Override
   public void execute() {
-      target = camera.getTarget(targetType.ID, 26);
+
+      
+      target = camera.getTarget(targetType.ID, tagID);
       robotPose2d=sd.getState().Pose;
       if (target != null){
-        targetAngle = camera.getTagAngle(26)+Math.PI;
-        double targetX =robotPose2d.getX()+camera.getTagHeight(26)/Math.tan(Math.PI*target.pitch/180.);
-        double targetY = robotPose2d.getY()-targetX*Math.tan(target.yaw*Math.PI/180.);
-        pidx.setGoal(targetX-1);
-        pidy.setGoal(targetY);
+        double tagAngle =camera.getTagAngle(tagID); 
+        // tag angle points out from tag face, robot should end up facing 180 degrees from tag angle
+        targetAngle = tagAngle+Math.PI;
+        double tagx = camera.getTagHeight(26)/Math.tan(Math.PI*target.pitch/180.);
+        double tagy = -tagx*Math.tan(target.yaw*Math.PI/180.);
+        Translation2d goal =  robotPose2d.getTranslation().plus(
+        new Translation2d(tagx,tagy).rotateBy(robotPose2d.getRotation()));
+
+        // move goal position 1 meter away from tag, in direction normal to tag face
+        Translation2d offset = new Translation2d(1,0).rotateBy(new Rotation2d(tagAngle));
+        goal = goal.plus(offset);
+
+        pidx.setGoal(goal.getX());
+        pidy.setGoal(goal.getY());
         pidr.setGoal(targetAngle);
-        SmartDashboard.putNumber("TargetX",targetX);
-        SmartDashboard.putNumber("TargetY",targetY);
-        SmartDashboard.putNumber("TargetAngle",targetAngle);
-        double yawCalc = 180*Math.atan(( robotPose2d.getY()-camera.getTagY(26)) /  
-            ( robotPose2d.getX()-camera.getTagX(26)))/Math.PI;
- 
-        System.out.println(targetX+"  "+target.yaw+"  "+yawCalc+"  "+
-          "  "+targetY);
-        state = 1;
-      }
+
+      state = 1;
+    }
 
       if (state ==1){
           double dx = -pidx.calculate(robotPose2d.getX());

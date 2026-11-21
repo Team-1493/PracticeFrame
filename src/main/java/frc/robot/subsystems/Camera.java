@@ -43,11 +43,6 @@ public class Camera extends SubsystemBase {
         cameraSim = new PhotonCameraSim(cam, cameraProp);
         visionSim.addCamera(cameraSim, new Transform3d(0,0, 0, new Rotation3d(0,0,0)));
         visionSim.addAprilTags(kTagLayout);
-        var debugField = visionSim.getDebugField();
-        for (var tag : kTagLayout.getTags()) {
-            kTagLayout.getTagPose(tag.ID).ifPresent(pose ->
-            debugField.getObject("Tag ID " + tag.ID).setPose(pose.toPose2d()));
-        }
         visionSim.getDebugField();
         cameraSim.enableRawStream(true);
         cameraSim.enableProcessedStream(true);

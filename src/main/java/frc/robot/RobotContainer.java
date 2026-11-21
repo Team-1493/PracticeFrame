@@ -20,7 +20,8 @@ import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.Camera;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
-import frc.robot.Commands.TurnToVisibleTag;
+import frc.robot.Commands.driveToFixedTag2D;
+import frc.robot.Commands.driveToFixedTag3D;
 
 public class RobotContainer {
     private double MaxSpeed = 1.0 * TunerConstants.kSpeedAt12Volts.in(MetersPerSecond); // kSpeedAt12Volts desired top speed
@@ -40,7 +41,8 @@ public class RobotContainer {
     public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
     public final Camera camera = new Camera(drivetrain);
 
-    private final TurnToVisibleTag turnToVisible = new TurnToVisibleTag(drivetrain, camera) ;
+    private final driveToFixedTag2D turnToVisible = new driveToFixedTag2D(drivetrain, camera) ;
+    private final driveToFixedTag3D driveTag3D = new driveToFixedTag3D(drivetrain, camera) ;    
 
     public RobotContainer() {
         configureBindings();
@@ -76,7 +78,7 @@ public class RobotContainer {
        
             
         joystick.button(5).whileTrue(turnToVisible);                
-                       
+        joystick.button(6).whileTrue(driveTag3D);                                    
 
         // Run SysId routines when holding back/start and X/Y.
         // Note that each routine should be run exactly once in a single log.
@@ -86,7 +88,7 @@ public class RobotContainer {
 //        joystick.start().and(joystick.x()).whileTrue(drivetrain.sysIdQuasistatic(Direction.kReverse));
 
         // Reset the field-centric heading on left bumper press.
-        joystick.button(6).onTrue(drivetrain.runOnce(drivetrain::seedFieldCentric));
+        joystick.button(7).onTrue(drivetrain.runOnce(drivetrain::seedFieldCentric));
 
         drivetrain.registerTelemetry(logger::telemeterize);
     }
