@@ -43,7 +43,11 @@ public class Camera extends SubsystemBase {
         cameraSim = new PhotonCameraSim(cam, cameraProp);
         visionSim.addCamera(cameraSim, new Transform3d(0,0, 0, new Rotation3d(0,0,0)));
         visionSim.addAprilTags(kTagLayout);
-        visionSim.getDebugField();
+        var debugField = visionSim.getDebugField();
+        for (var tag : kTagLayout.getTags()) {
+            kTagLayout.getTagPose(tag.ID).ifPresent(pose ->
+            debugField.getObject("Tag ID " + tag.ID).setPose(pose.toPose2d()));
+        }
         cameraSim.enableRawStream(true);
         cameraSim.enableProcessedStream(true);
 
@@ -169,11 +173,6 @@ public class Camera extends SubsystemBase {
     public void simulationPeriodic() {
         // Update the camera simulation
         visionSim.update(drivetrain.getState().Pose);
-        PhotonTrackedTarget target = getTarget(targetType.ID,26);
-        if (target != null){
-            printTarget(target);
-            getTagAngle(target.fiducialId);
-        }
     }
 
 

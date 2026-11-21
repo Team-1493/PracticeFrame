@@ -98,7 +98,7 @@ public class driveToFixedTag3D extends Command {
       robotPose2d=sd.getState().Pose;
 
       if (state ==0)
-        target = camera.getTarget(targetType.BEST);
+        target = camera.getTarget(targetType.AREA);
       else
         target = camera.getTarget(targetType.ID,tagID);
 
@@ -113,7 +113,7 @@ public class driveToFixedTag3D extends Command {
         // move goal position 1 meter away from tag, in direction normal to tag face
         double tagAngle =camera.getTagAngle(tagID); 
         Translation2d offset = new Translation2d(1,0).rotateBy(new Rotation2d(tagAngle));
-       goal = goal.plus(offset);
+       // goal = goal.plus(offset);
 
         pidx.setGoal(goal.getX());
         pidy.setGoal(goal.getY());

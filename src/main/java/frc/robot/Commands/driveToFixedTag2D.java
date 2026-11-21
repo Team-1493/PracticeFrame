@@ -42,7 +42,7 @@ public class driveToFixedTag2D extends Command {
     private final Camera camera;
     // state 0 - no goal pose calculated yet, state 1 = goal pose has been calculated
     int state = 0;
-    int tagID = 26;
+    int tagID = 25;
     PhotonTrackedTarget target;
     double targetAngle;
     Pose2d robotPose2d;
@@ -66,6 +66,7 @@ public class driveToFixedTag2D extends Command {
   public driveToFixedTag2D(CommandSwerveDrivetrain m_sd, Camera m_cam) { 
       sd = m_sd;
       camera = m_cam;
+      SmartDashboard.putNumber("DriveToTag ID", tagID);
       addRequirements(sd,camera);
   }
 
@@ -74,6 +75,7 @@ public class driveToFixedTag2D extends Command {
   public void initialize() {
     state=0;
     robotPose2d=sd.getState().Pose;
+    tagID = (int)SmartDashboard.getNumber("DriveToTag ID", 26);
 
     
     updateControllers();
