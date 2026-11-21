@@ -102,7 +102,7 @@ public class driveToFixedTag2D extends Command {
         double tagAngle =camera.getTagAngle(tagID); 
         // tag angle points out from tag face, robot should end up facing 180 degrees from tag angle
         targetAngle = tagAngle+Math.PI;
-        double tagx = camera.getTagHeight(26)/Math.tan(Math.PI*target.pitch/180.);
+        double tagx = camera.getTagHeight(tagID)/Math.tan(Math.PI*target.pitch/180.);
         double tagy = -tagx*Math.tan(target.yaw*Math.PI/180.);
         Translation2d goal =  robotPose2d.getTranslation().plus(
         new Translation2d(tagx,tagy).rotateBy(robotPose2d.getRotation()));

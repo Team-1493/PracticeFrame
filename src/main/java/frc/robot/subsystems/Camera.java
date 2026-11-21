@@ -14,6 +14,7 @@ import edu.wpi.first.apriltag.AprilTagFieldLayout;
 import edu.wpi.first.apriltag.AprilTagFields;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Transform3d;
+import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Subsystem;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -31,6 +32,7 @@ public class Camera extends SubsystemBase {
     TargetModel targetModel = TargetModel.kAprilTag36h11;
     SimCameraProperties cameraProp = new SimCameraProperties();
     CommandSwerveDrivetrain drivetrain;
+    public Transform3d ROBOT_TO_CAMERA = new Transform3d(new Translation3d(0,0,0),new Rotation3d(0,0,0));
 
     
     public enum targetType {

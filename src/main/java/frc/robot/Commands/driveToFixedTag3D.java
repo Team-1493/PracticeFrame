@@ -32,6 +32,7 @@ import com.ctre.phoenix6.swerve.SwerveRequest;
 
 import edu.wpi.first.math.controller.ProfiledPIDController;
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.math.geometry.Transform3d;
@@ -93,58 +94,46 @@ public class driveToFixedTag3D extends Command {
   }
 
   // Called every time the scheduler runs while the command is scheduled.
-  @Override
-  public void execute() {
-      robotPose2d=sd.getState().Pose;
 
-      if (state ==0)
-        target = camera.getTarget(targetType.AREA);
-      else
-        target = camera.getTarget(targetType.ID,tagID);
+@Override
+public void execute() {
+    robotPose2d = sd.getState().Pose;
 
-      if (target != null){
-        Transform3d camToTatrget3D = target.bestCameraToTarget;
-        Transform2d camToTarget2D = new Transform2d(camToTatrget3D.getTranslation().toTranslation2d(),
-          camToTatrget3D.getRotation().toRotation2d());
-        tagID = target.fiducialId;
+    // Pick the largest visible tag, then keep tracking that ID.
+    target = state == 0
+        ? camera.getTarget(targetType.AREA)
+        : camera.getTarget(targetType.ID, tagID);
 
-        Translation2d goal =  robotPose2d.getTranslation().plus(camToTarget2D.getTranslation());        
+    if (target != null) {
+        Transform3d cameraToTag = target.getBestCameraToTarget();
+        var layoutTag = Camera.kTagLayout.getTagPose(target.getFiducialId());
 
-        // move goal position 1 meter away from tag, in direction normal to tag face
-        double tagAngle =camera.getTagAngle(tagID); 
-        Translation2d offset = new Translation2d(1,0).rotateBy(new Rotation2d(tagAngle));
-       // goal = goal.plus(offset);
+        if (cameraToTag.getX() > 0.0 && layoutTag.isPresent()) {
+            Pose3d estimatedTag = new Pose3d(robotPose2d)
+                .transformBy(camera.ROBOT_TO_CAMERA)
+                .transformBy(cameraToTag);
 
-        pidx.setGoal(goal.getX());
-        pidy.setGoal(goal.getY());
-        pidr.setGoal(targetAngle);
+            Rotation2d tagOutward = layoutTag.get().toPose2d().getRotation();
+            Translation2d goal = estimatedTag.getTranslation().toTranslation2d()
+                .plus(new Translation2d(1, tagOutward));
 
-        state = 1;
-        System.out.println(tagID+"  "+goal.getX()+"  "+goal.getY());
-      }
+            pidx.setGoal(goal.getX());
+            pidy.setGoal(goal.getY());
+            pidr.setGoal(tagOutward.plus(Rotation2d.fromDegrees(180)).getRadians());
 
-      if (state ==1){
-          double dx = -pidx.calculate(robotPose2d.getX());
-          double dy = -pidy.calculate(robotPose2d.getY());
-          double dr = pidr.calculate(robotPose2d.getRotation().getRadians());
-//        System.out.println("dx,dy,dz "+dx+"  "+dy+"  "+dr);
+            tagID = target.getFiducialId();
+            state = 1;
+        }
+    }
 
-
-          sd.setControl(drive.withVelocityX(dx)
-              .withVelocityY(dy) 
-              .withRotationalRate(dr)); 
-      
-      }
-
-      
-//      if (Math.abs(pidx.getPositionError()) < 0.0254) dx=0;    
-//      if (Math.abs(pidy.getPositionError()) < 0.0254) dy=0;    
-//      if (Math.abs(pidr.getPositionError()) < 0.0254) dr=0;    
-
-
-
-
-  }
+    // Hold the last accepted goal if the tag goes out of view.
+    if (state == 1) {
+        sd.setControl(drive
+            .withVelocityX(-pidx.calculate(robotPose2d.getX()))
+            .withVelocityY(-pidy.calculate(robotPose2d.getY()))
+            .withRotationalRate(pidr.calculate(robotPose2d.getRotation().getRadians())));
+    }
+}
 
   @Override
   public boolean isFinished() {
