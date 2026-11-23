@@ -68,9 +68,17 @@ public class driveToFixedTag3D extends Command {
     private final SwerveRequest.FieldCentric drive = new SwerveRequest.FieldCentric().withDriveRequestType(DriveRequestType.OpenLoopVoltage);
 
   public driveToFixedTag3D(CommandSwerveDrivetrain m_sd, Camera m_cam) { 
-      sd = m_sd;
-      camera = m_cam;
-      addRequirements(sd,camera);
+        SmartDashboard.putNumber("driveTag Trans kP",followPose_Trans_kP);
+        SmartDashboard.putNumber("driveTag Trans kD",followPose_Trans_kD);
+        SmartDashboard.putNumber("driveTag Rot kP",followPose_Rot_kP);
+        SmartDashboard.putNumber("driveTag Trans Max V",followPose_Trans_maxV);
+        SmartDashboard.putNumber("driveTag Trans Max A",followPose_Trans_maxA);
+        SmartDashboard.putNumber("driveTag Rot Max V",followPose_Rot_maxV);
+        SmartDashboard.putNumber("driveTag Rot Max A",followPose_Rot_maxA);        
+
+        sd = m_sd;
+        camera = m_cam;
+        addRequirements(sd,camera);
   }
 
   // Called when the command is initially scheduled.
@@ -148,6 +156,7 @@ public void execute() {
 
   public void updateControllers(){
 
+    readConstants();
 
       pidx = new ProfiledPIDController(
              followPose_Trans_kP*.5,
@@ -175,6 +184,17 @@ public void execute() {
       
        pidr.enableContinuousInput(-Math.PI, Math.PI);
 
+  }
+
+  private void readConstants(){
+
+    followPose_Trans_kP = SmartDashboard.getNumber("driveTag Trans kP",followPose_Trans_kP);
+    followPose_Trans_kD  =  SmartDashboard.getNumber("driveTag Trans kD",followPose_Trans_kD);
+    followPose_Rot_kP = SmartDashboard.getNumber("driveTag Rot kP",followPose_Rot_kP);
+    followPose_Trans_maxV = SmartDashboard.getNumber("driveTag Trans Max V",followPose_Trans_maxV);
+    followPose_Trans_maxA = SmartDashboard.getNumber("driveTag Trans Max A",followPose_Trans_maxA);
+    followPose_Rot_maxV = SmartDashboard.getNumber("driveTag Rot Max V",followPose_Rot_maxV);
+    followPose_Rot_maxA = SmartDashboard.getNumber("driveTag Rot Max A",followPose_Rot_maxA);        
 
   }
 

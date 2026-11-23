@@ -59,7 +59,7 @@ public class Camera extends SubsystemBase {
         // Use this to simulate real world camera errors
         cameraProp.setCalibError(0.25, 0.08);
         // Set the camera image capture framerate (Note: this is limited by robot loop rate).
-        cameraProp.setFPS(20);
+        cameraProp.setFPS(60);
         // The average and standard deviation in milliseconds of image data latency.
         cameraProp.setAvgLatencyMs(35);
         cameraProp.setLatencyStdDevMs(5);
@@ -91,7 +91,7 @@ public class Camera extends SubsystemBase {
         // of the tags you need to edit each one separately. The default tags
         // are grouped so you can edit them as a batch! 
 
-        /* 
+        /*  
         for (var tag : kTagLayout.getTags()) {
             kTagLayout.getTagPose(tag.ID).ifPresent(pose ->
             debugField.getObject("Tag ID " + tag.ID).setPose(pose.toPose2d()));
